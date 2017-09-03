@@ -1,8 +1,18 @@
-#set($r.prettyPrint = false)
-#foreach($Q in $r.queries)
-$Q.code $Q.q
-#end
+#**
+	Affiche l'ensemble des informations du processus de réécriture
 
+ 	Options :
+		- display.queries Afficher les requêtes
+*#
+#set( $displayq = $r.options.getOption("display.queries",false) )
+#if( $displayq == true )
+	#foreach($Q in $r.queries)
+$Q.code $Q.q
+	#end
+#else
+$r.compute()
+#end
 Number of codes  : $r.nbCodes
+Interval         : $r.interval
 Generation time  : $r.times.generation
-Computation time : $r.times.generation
+Computation time : $r.times.computation

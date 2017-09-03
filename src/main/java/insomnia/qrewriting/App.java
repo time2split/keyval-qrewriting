@@ -1,7 +1,6 @@
 package insomnia.qrewriting;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.StringWriter;
 
 import org.apache.commons.cli.CommandLine;
@@ -13,9 +12,7 @@ import org.apache.commons.cli.Options;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
-import org.apache.velocity.exception.ResourceNotFoundException;
 
-import insomnia.reader.ReaderException;
 import insomnia.reader.TextReader;
 
 public class App
@@ -40,23 +37,26 @@ public class App
 		final Options ret = new Options();
 		final OptionGroup template = new OptionGroup();
 		String templates = "";
-		
+
 		// Liste des templates disponibles
-		for(String s : getTemplateFiles())
+		for (String s : getTemplateFiles())
 		{
 			templates += "@" + s + "\n";
 		}
 		template.addOption(Option.builder("t").longOpt("file-template")
-				.desc("Template of the output \n" + templates + "\n").hasArg().build());
-//		template.addOption(Option.builder("T").longOpt("template")
-//				.desc("Direct input of the template").hasArg().build());
+				.desc("Template of the output \n" + templates + "\n").hasArg()
+				.build());
+		// template.addOption(Option.builder("T").longOpt("template")
+		// .desc("Direct input of the template").hasArg().build());
 		ret.addOption(Option.builder("q").longOpt("file-query")
 				.desc("Query file").hasArg().build());
 		ret.addOption(Option.builder("r").longOpt("file-rules")
 				.desc("Rules file").hasArg().build());
 		ret.addOption(Option.builder("h").longOpt("help").desc("Help").build());
 		ret.addOption(Option.builder().longOpt("display-template")
-			.desc("Display the template and exit").build());
+				.desc("Display the template and exit").build());
+		ret.addOption(Option.builder("O").hasArgs().valueSeparator()
+				.desc("Set an option of the program").build());
 		ret.addOptionGroup(template);
 		return ret;
 	}
@@ -79,21 +79,20 @@ public class App
 					"\nContact : webzuri@gmail.com\n");
 				return;
 			}
-
 			AppRewriting apprewriting = new AppRewriting(coml);
 			String fileTemplate = coml.getOptionValue('t', App.deft);
 
-			if(fileTemplate.charAt(0) == '@')
+			if (fileTemplate.charAt(0) == '@')
 			{
 				String name = fileTemplate.substring(1);
-				
-				if(!name.endsWith(".vm"))
+
+				if (!name.endsWith(".vm"))
 					name += ".vm";
-					
+
 				fileTemplate = "template/" + name;
 			}
-			
-			if(coml.hasOption("display-template"))
+
+			if (coml.hasOption("display-template"))
 			{
 				TextReader reader = new TextReader(new File(fileTemplate));
 				reader.setModeAll();
@@ -102,6 +101,7 @@ public class App
 				reader.close();
 				return;
 			}
+
 			Velocity.init();
 			VelocityContext vcontext = new VelocityContext();
 			vcontext.put("r", apprewriting);
@@ -113,8 +113,7 @@ public class App
 
 			System.out.println(sw);
 		}
-		catch (ResourceNotFoundException
-				| org.apache.commons.cli.ParseException | ReaderException | IOException e)
+		catch (Exception e)
 		{
 			System.err.println(e.getMessage());
 		}

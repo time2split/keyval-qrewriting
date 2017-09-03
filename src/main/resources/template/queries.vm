@@ -1,4 +1,10 @@
-#set($r.prettyPrint = false)
+#*
+	Affiche l'ensemble des requêtes
+
+	Options
+		- $sep Séparateur à la fin de chaque requête
+*#
+#set( $sep = $r.options.getOption("sep","
+") )
 #foreach($q in $r.queries)
-$q.q
-#end
+$q.q$sep#end

@@ -3,10 +3,12 @@ package insomnia.qrewriting;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringReader;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
 
@@ -47,30 +49,63 @@ public class AppRewriting
 	private ArrayList<Query>			queries;
 	final private JsonWriter			writer		= new JsonWriter();
 
+	private Options						options;
+
 	public AppRewriting(CommandLine coml)
 	{
 		this.coml = coml;
 		times.put("generation", null);
 		times.put("computation", null);
+
+		Properties comprop = coml.getOptionProperties("O");
+		Properties sysdef = new Properties();
+
+		try (TextReader reader = new TextReader(
+			new File("properties/default.properties"));)
+		{
+			reader.setModeAll();
+			StringReader buff;
+			buff = new StringReader(reader.read().get(0));
+			sysdef.load(buff);
+		}
+		catch (ReaderException | IOException e)
+		{
+			e.printStackTrace();
+		}
+		sysdef.putAll(comprop);
+		options = new Options(sysdef);
 	}
 
 	/**
-	 * Change la représentation du json du writer
-	 * 
-	 * @param v
+	 * A appeler avant toute écriture avec le writer
 	 */
-	public void setPrettyPrint(boolean v)
+	private void initJSWriter()
 	{
-		writer.getOptions().setCompact(!v);
+		writer.getOptions().setCompact(
+			options.getOption("json.prettyPrint").equals("false") ? true
+					: false);
 	}
 
-	public Encoding getEncoding()
+	// ===============================================================
+	// VELOCITY ACCESS
+	// ===============================================================
+
+	public Options getOptions()
 	{
+		return options;
+	}
+
+	public Encoding getEncoding() throws ReaderException, IOException,
+			BuilderException, CodeGeneratorException
+	{
+		makeContext();
 		return encoding;
 	}
-	
-	public Interval getInterval()
+
+	public Interval getInterval() throws ReaderException, IOException,
+			BuilderException, CodeGeneratorException
 	{
+		makeContext();
 		return encoding.generateCodeInterval();
 	}
 
@@ -92,12 +127,14 @@ public class AppRewriting
 		makeQueries();
 	}
 
-	public ArrayList<QueryBucket> getQueries() throws ReaderException,
-			IOException, BuilderException, CodeGeneratorException
+	public ArrayList<QueryBucket> getQueries()
+			throws ReaderException, IOException, BuilderException,
+			CodeGeneratorException, WriterException
 	{
 		ArrayList<QueryBucket> ret = new ArrayList<>();
 		makeQueries();
 		long i = encoding.generateCodeInterval().geta();
+		initJSWriter();
 
 		for (Query q : queries)
 		{
@@ -105,22 +142,17 @@ public class AppRewriting
 			Json json = new JsonBuilder_query(q).newBuild();
 			writer.setDestination(buffer);
 
-			try
-			{
-				writer.write(json);
-			}
-			catch (WriterException e)
-			{
-				e.printStackTrace();
-			}
-			ret.add(
-				new QueryBucket(buffer.toString(), i, encoding.getCodeFrom((int) (i))));
+			writer.write(json);
+			ret.add(new QueryBucket(buffer.toString(), i,
+				encoding.getCodeFrom((int) (i))));
 			i++;
 		}
 		return ret;
 	}
 
-	public void makeQueries() throws ReaderException, IOException,
+	// ===============================================================
+
+	private void makeQueries() throws ReaderException, IOException,
 			BuilderException, CodeGeneratorException
 	{
 		makeContext();
@@ -145,8 +177,8 @@ public class AppRewriting
 		if (times.get("generation") != null)
 			return;
 
-		String fileQuery = coml.getOptionValue('q', "query");
-		String fileRules = coml.getOptionValue('r', "rules");
+		String fileQuery = coml.getOptionValue('q', App.defq);
+		String fileRules = coml.getOptionValue('r', App.defr);
 		{
 			TextReader reader = new TextReader();
 			reader.setModeAll();
