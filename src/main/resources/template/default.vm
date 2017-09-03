@@ -1,0 +1,8 @@
+#set($r.prettyPrint = false)
+#foreach($Q in $r.queries)
+$Q.code $Q.q
+#end
+
+Number of codes  : $r.nbCodes
+Generation time  : $r.times.generation
+Computation time : $r.times.generation
