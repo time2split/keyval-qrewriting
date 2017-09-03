@@ -4,7 +4,7 @@
  	Options :
 		- display.queries Afficher les requêtes
 *#
-#set( $displayq = $r.options.getOption("display.queries",false) )
+#set( $displayq = $r.options.getOption("display.queries",true) )
 #if( $displayq == true )
 	#foreach($Q in $r.queries)
 $Q.code $Q.q
@@ -14,5 +14,6 @@ $r.compute()
 #end
 Number of codes  : $r.nbCodes
 Interval         : $r.interval
+Threads          : $r.nbThreads
 Generation time  : $r.times.generation
 Computation time : $r.times.computation

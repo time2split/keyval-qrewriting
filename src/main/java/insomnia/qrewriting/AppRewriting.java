@@ -4,11 +4,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.security.InvalidParameterException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.cli.CommandLine;
 
@@ -29,6 +31,8 @@ import insomnia.qrewritingnorl1.query_rewriting.qpu.QPUSimple;
 import insomnia.qrewritingnorl1.query_rewriting.query.Query;
 import insomnia.qrewritingnorl1.query_rewriting.query.QueryBuilderException;
 import insomnia.qrewritingnorl1.query_rewriting.rule.RuleManager;
+import insomnia.qrewritingnorl1.query_rewriting.thread.QThreadManager;
+import insomnia.qrewritingnorl1.query_rewriting.thread.QThreadResult;
 import insomnia.reader.ReaderException;
 import insomnia.reader.TextReader;
 import insomnia.writer.WriterException;
@@ -95,6 +99,11 @@ public class AppRewriting
 		return options;
 	}
 
+	public String getNbThreads()
+	{
+		return options.getOption("sys.nbThreads");
+	}
+
 	public Encoding getEncoding() throws ReaderException, IOException,
 			BuilderException, CodeGeneratorException
 	{
@@ -156,10 +165,44 @@ public class AppRewriting
 			BuilderException, CodeGeneratorException
 	{
 		makeContext();
-		Instant start = Instant.now();
-		QPU qpu = new QPUSimple(query, encoding.generateAllCodes(), encoding);
-		queries = qpu.process();
-		Instant end = Instant.now();
+		int nbThreads = Integer
+				.parseInt(options.getOption("sys.nbThreads", "1"));
+		Instant start;
+		Instant end;
+
+		if (nbThreads == 1)
+		{
+			start = Instant.now();
+			QPU qpu = new QPUSimple(query, encoding.generateAllCodes(),
+				encoding);
+			queries = qpu.process();
+		}
+		else if (nbThreads > 1)
+		{
+			queries = new ArrayList<>();
+			QThreadManager threads = new QThreadManager(query, encoding);
+			threads.setMode_nbThread(nbThreads);
+			start = Instant.now();
+
+			try
+			{
+				ArrayList<QThreadResult> res = threads.compute();
+
+				for (QThreadResult r : res)
+				{
+					queries.add(r.query);
+				}
+			}
+			catch (InterruptedException | ExecutionException e)
+			{
+				e.printStackTrace();
+			}
+		}
+		else
+			throw new InvalidParameterException("Bad parameter sys.nbThreads="
+					+ options.getOption("sys.nbThreads"));
+
+		end = Instant.now();
 		times.put("computation", Duration.between(start, end));
 	}
 
