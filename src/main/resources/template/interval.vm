@@ -1,2 +1,1 @@
-#set($nb = $r.nbCodes- 1)
-[0,$nb]
+$r.interval

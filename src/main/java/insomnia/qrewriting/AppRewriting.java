@@ -14,6 +14,7 @@ import insomnia.builder.BuilderException;
 import insomnia.json.Json;
 import insomnia.json.JsonReader;
 import insomnia.json.JsonWriter;
+import insomnia.numeric.Interval;
 import insomnia.qrewritingnorl1.query_building.RuleManagerBuilder_text;
 import insomnia.qrewritingnorl1.query_building.mongo.JsonBuilder_query;
 import insomnia.qrewritingnorl1.query_building.mongo.QueryBuilder_json;
@@ -66,6 +67,11 @@ public class AppRewriting
 	public Encoding getEncoding()
 	{
 		return encoding;
+	}
+	
+	public Interval getInterval()
+	{
+		return encoding.generateCodeInterval();
 	}
 
 	public HashMap<String, Duration> getTimes()
