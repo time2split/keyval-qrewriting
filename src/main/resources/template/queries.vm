@@ -1,0 +1,4 @@
+#set($r.prettyPrint = false)
+#foreach($q in $r.queries)
+$q.q
+#end
