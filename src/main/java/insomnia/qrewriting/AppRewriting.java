@@ -3,7 +3,8 @@ package insomnia.qrewriting;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.StringReader;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.security.InvalidParameterException;
 import java.time.Duration;
 import java.time.Instant;
@@ -54,25 +55,24 @@ public class AppRewriting
 	final private JsonWriter			writer		= new JsonWriter();
 
 	private Options						options;
+	private App							app;
 
-	public AppRewriting(CommandLine coml)
+	public AppRewriting(App app)
 	{
-		this.coml = coml;
+		this.app = app;
+		coml = app.getCommandLine();
 		times.put("generation", null);
 		times.put("computation", null);
 
 		Properties comprop = coml.getOptionProperties("O");
 		Properties sysdef = new Properties();
 
-		try (TextReader reader = new TextReader(
-			new File("properties/default.properties"));)
+		try
 		{
-			reader.setModeAll();
-			StringReader buff;
-			buff = new StringReader(reader.read().get(0));
-			sysdef.load(buff);
+			URL resource = AppRewriting.class.getResource("default.properties");
+			sysdef.load(new InputStreamReader(resource.openStream(), "UTF8"));
 		}
-		catch (ReaderException | IOException e)
+		catch (IOException e)
 		{
 			e.printStackTrace();
 		}
@@ -173,8 +173,7 @@ public class AppRewriting
 		if (nbThreads == 1)
 		{
 			start = Instant.now();
-			QPU qpu = new QPUSimple(query, encoding.generateAllCodes(),
-				encoding);
+			QPU qpu = new QPUSimple(query, encoding);
 			queries = qpu.process();
 		}
 		else if (nbThreads > 1)
@@ -220,8 +219,8 @@ public class AppRewriting
 		if (times.get("generation") != null)
 			return;
 
-		String fileQuery = coml.getOptionValue('q', App.defq);
-		String fileRules = coml.getOptionValue('r', App.defr);
+		String fileQuery = coml.getOptionValue('q', app.defq);
+		String fileRules = coml.getOptionValue('r', app.defr);
 		{
 			TextReader reader = new TextReader();
 			reader.setModeAll();
