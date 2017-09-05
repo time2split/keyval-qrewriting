@@ -1,10 +1,14 @@
 package insomnia.qrewriting;
 
-import java.io.File;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.io.StringWriter;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Properties;
 
@@ -14,12 +18,10 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
+import org.apache.commons.io.IOUtils;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
-
-import insomnia.reader.ReaderException;
-import insomnia.reader.TextReader;
 
 public class App
 {
@@ -61,15 +63,15 @@ public class App
 	 */
 	protected String[] getTemplateFiles()
 	{
-		try (TextReader reader = new TextReader(
-			App.class.getResourceAsStream(pathTemplate));)
+		try (Reader isr = new InputStreamReader(
+			App.class.getResourceAsStream(pathTemplate));
+				Reader reader = new BufferedReader(isr))
 		{
-			reader.setModeLine();
-			String[] ret = reader.read().toArray(new String[0]);
+			String[] ret = IOUtils.readLines(reader).toArray(new String[0]);
 			Arrays.sort(ret);
 			return ret;
 		}
-		catch (IOException | ReaderException e)
+		catch (IOException e)
 		{
 			e.printStackTrace();
 		}
@@ -189,20 +191,23 @@ public class App
 
 			if (coml.hasOption("display-template"))
 			{
-				TextReader reader = new TextReader();
+				String template;
 				
-				if(internalTemplate)
+				if (internalTemplate)
 				{
-					reader.setSource(App.class.getResourceAsStream(fileTemplate));
+					Reader reader = new BufferedReader(new InputStreamReader(
+						App.class.getResourceAsStream(fileTemplate)));
+					template = IOUtils.toString(reader);
+					reader.close();
 				}
 				else
 				{
-					reader.setSource(new File(fileTemplate));
+					Path path = Paths.get(fileTemplate);
+					Reader reader = Files.newBufferedReader(path);
+					template = IOUtils.toString(reader);
+					reader.close();
 				}
-				reader.setModeAll();
-				String buff = reader.read().get(0);
-				reader.close();
-				System.out.println(buff);
+				System.out.println(template);
 				return;
 			}
 			createVelocityContext();
