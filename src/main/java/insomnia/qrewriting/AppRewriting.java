@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.InvalidParameterException;
 import java.time.Duration;
 import java.time.Instant;
@@ -35,7 +37,6 @@ import insomnia.qrewritingnorl1.query_rewriting.rule.RuleManager;
 import insomnia.qrewritingnorl1.query_rewriting.thread.QThreadManager;
 import insomnia.qrewritingnorl1.query_rewriting.thread.QThreadResult;
 import insomnia.reader.ReaderException;
-import insomnia.reader.TextReader;
 import insomnia.writer.WriterException;
 
 /**
@@ -222,11 +223,7 @@ public class AppRewriting
 		String fileQuery = coml.getOptionValue('q', app.defq);
 		String fileRules = coml.getOptionValue('r', app.defr);
 		{
-			TextReader reader = new TextReader();
-			reader.setModeAll();
-			reader.setSource(new File(fileRules));
-			new RuleManagerBuilder_text(rules, reader).build();
-			reader.close();
+			new RuleManagerBuilder_text(rules).addLines(Files.readAllLines(Paths.get(fileRules))).build();
 		}
 		{
 			JsonReader jsreader = new JsonReader(new File(fileQuery));
