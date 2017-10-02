@@ -26,6 +26,7 @@ import insomnia.json.JsonWriter;
 import insomnia.numeric.Interval;
 import insomnia.qrewritingnorl1.query_building.RuleManagerBuilder_text;
 import insomnia.qrewritingnorl1.query_building.mongo.JsonBuilder_query;
+import insomnia.qrewritingnorl1.query_building.mongo.JsonBuilder_query.MODE;
 import insomnia.qrewritingnorl1.query_building.mongo.QueryBuilder_json;
 import insomnia.qrewritingnorl1.query_rewriting.code.Encoding;
 import insomnia.qrewritingnorl1.query_rewriting.generator.CodeGenerator;
@@ -95,9 +96,31 @@ public class AppRewriting
 	}
 
 	// Temporaire jusqu'à de nouveaux drivers
-	private JsonBuilder newJSBuilder(Query q)
+	private JsonBuilder newJSBuilder(Query q) throws JsonBuilderException
 	{
-		return new JsonBuilder_query(q);
+		JsonBuilder_query b = new JsonBuilder_query(q);
+		JsonBuilder_query.MODE m = null;
+		String omode = options.getOption("json.mongo.mode", "");
+
+		switch (omode.toLowerCase())
+		{
+		case "dot":
+			m = MODE.DOT;
+			break;
+		case "elemmatch":
+		case "ematch":
+			m = MODE.ELEMMATCH;
+			break;
+		case "":
+			break;
+		default:
+			throw new JsonBuilderException(
+				"Value of json.mongo.mode '" + omode + "' unknow");
+		}
+		if (m != null)
+			b.setMode(m);
+
+		return b;
 	}
 
 	// ===============================================================
@@ -205,8 +228,7 @@ public class AppRewriting
 			BuilderException, CodeGeneratorException
 	{
 		makeContext();
-		nbThreads = Integer
-				.parseInt(options.getOption("sys.nbThreads", "1"));
+		nbThreads = Integer.parseInt(options.getOption("sys.nbThreads", "1"));
 		Instant start;
 		Instant end;
 
