@@ -3,12 +3,19 @@
 
  	Options :
 		- display.queries Afficher les requêtes
-*#
+		- display.codes   Afficher les codes
+		- display.char.endcode  Caractère suivant l'affichage d'un code
+*###
 #set( $displayq = $r.options.getOption("display.queries",true) )
+#set( $displayc = $r.options.getOption("display.codes",true) )
+#set( $endcode  = $r.options.getOption("display.char.endcode"," ") )
 #if( $displayq == true )
-	#foreach($Q in $r.queries)
-$Q.code $Q.q
-	#end
+#foreach($Q in $r.queries)
+#if($displayc)
+$Q.code$endcode##
+#end
+$Q.q
+#end
 #else
 $r.compute()
 #end

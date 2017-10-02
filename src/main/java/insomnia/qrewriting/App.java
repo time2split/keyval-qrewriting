@@ -5,11 +5,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
@@ -22,6 +22,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
+
+import insomnia.resource.ResourceUtils;
 
 public class App
 {
@@ -63,15 +65,11 @@ public class App
 	 */
 	protected String[] getTemplateFiles()
 	{
-		try (Reader isr = new InputStreamReader(
-			App.class.getResourceAsStream(pathTemplate));
-				Reader reader = new BufferedReader(isr))
+		try
 		{
-			String[] ret = IOUtils.readLines(reader).toArray(new String[0]);
-			Arrays.sort(ret);
-			return ret;
+			return ResourceUtils.getResourcesOf(App.class, pathTemplate);
 		}
-		catch (IOException e)
+		catch (URISyntaxException | IOException e)
 		{
 			e.printStackTrace();
 		}
@@ -192,7 +190,7 @@ public class App
 			if (coml.hasOption("display-template"))
 			{
 				String template;
-				
+
 				if (internalTemplate)
 				{
 					Reader reader = new BufferedReader(new InputStreamReader(

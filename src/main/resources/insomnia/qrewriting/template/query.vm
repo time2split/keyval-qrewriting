@@ -1,0 +1,3 @@
+#*
+	Affiche la requête de base
+*#$r.query

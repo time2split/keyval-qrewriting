@@ -2,6 +2,11 @@ package insomnia.qrewriting;
 
 import insomnia.qrewritingnorl1.query_rewriting.code.Code;
 
+/**
+ * Stocke les informations d'une requête pour Velocity
+ * @author zuri
+ *
+ */
 public class QueryBucket
 {
 	public String	q;

@@ -19,6 +19,8 @@ import org.apache.commons.cli.CommandLine;
 
 import insomnia.builder.BuilderException;
 import insomnia.json.Json;
+import insomnia.json.JsonBuilder;
+import insomnia.json.JsonBuilderException;
 import insomnia.json.JsonReader;
 import insomnia.json.JsonWriter;
 import insomnia.numeric.Interval;
@@ -50,7 +52,7 @@ public class AppRewriting
 	private CommandLine					coml;
 	private HashMap<String, Duration>	times		= new HashMap<>();
 	private RuleManager					rules		= new RuleManager();
-	private Query						query		= new Query();
+	private Query						query		= null;
 	private Encoding					encoding	= new Encoding();
 	private ArrayList<Query>			queries;
 	final private JsonWriter			writer		= new JsonWriter();
@@ -89,6 +91,12 @@ public class AppRewriting
 		writer.getOptions().setCompact(
 			options.getOption("json.prettyPrint").equals("false") ? true
 					: false);
+	}
+
+	// Temporaire jusqu'à de nouveaux drivers
+	private JsonBuilder newJSBuilder(Query q)
+	{
+		return new JsonBuilder_query(q);
 	}
 
 	// ===============================================================
@@ -137,6 +145,22 @@ public class AppRewriting
 		makeQueries();
 	}
 
+	/*
+	 * Récupère la requête de base
+	 */
+	public String getQuery() throws QueryBuilderException, ReaderException,
+			IOException, JsonBuilderException, WriterException
+	{
+		makeQuery();
+		initJSWriter();
+
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+		Json json = newJSBuilder(query).newBuild();
+		writer.setDestination(buffer);
+		writer.write(json);
+		return buffer.toString();
+	}
+
 	public ArrayList<QueryBucket> getQueries()
 			throws ReaderException, IOException, BuilderException,
 			CodeGeneratorException, WriterException
@@ -149,7 +173,7 @@ public class AppRewriting
 		for (Query q : queries)
 		{
 			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-			Json json = new JsonBuilder_query(q).newBuild();
+			Json json = newJSBuilder(q).newBuild();
 			writer.setDestination(buffer);
 
 			writer.write(json);
@@ -161,6 +185,20 @@ public class AppRewriting
 	}
 
 	// ===============================================================
+
+	private void makeQuery()
+			throws ReaderException, IOException, QueryBuilderException
+	{
+		if (query != null)
+			return;
+		query = new Query();
+		String fileQuery = coml.getOptionValue('q', app.defq);
+		JsonReader jsreader = new JsonReader(new File(fileQuery));
+		jsreader.getOptions().setStrict(false);
+		Json json = jsreader.read();
+		jsreader.close();
+		new QueryBuilder_json(query, json).build();
+	}
 
 	private void makeQueries() throws ReaderException, IOException,
 			BuilderException, CodeGeneratorException
@@ -220,18 +258,12 @@ public class AppRewriting
 		if (times.get("generation") != null)
 			return;
 
-		String fileQuery = coml.getOptionValue('q', app.defq);
 		String fileRules = coml.getOptionValue('r', app.defr);
 		{
-			new RuleManagerBuilder_text(rules).addLines(Files.readAllLines(Paths.get(fileRules))).build();
+			new RuleManagerBuilder_text(rules)
+					.addLines(Files.readAllLines(Paths.get(fileRules))).build();
 		}
-		{
-			JsonReader jsreader = new JsonReader(new File(fileQuery));
-			jsreader.getOptions().setStrict(false);
-			Json json = jsreader.read();
-			jsreader.close();
-			new QueryBuilder_json(query, json).build();
-		}
+		makeQuery();
 		Instant start = Instant.now();
 		CodeGenerator generator = new CodeGenerator_simple(query, rules);
 		Instant end = Instant.now();
