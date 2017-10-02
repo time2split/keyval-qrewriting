@@ -59,6 +59,7 @@ public class AppRewriting
 
 	private Options						options;
 	private App							app;
+	private int							nbThreads	= 0;
 
 	public AppRewriting(App app)
 	{
@@ -108,9 +109,9 @@ public class AppRewriting
 		return options;
 	}
 
-	public String getNbThreads()
+	public int getNbThreads()
 	{
-		return options.getOption("sys.nbThreads");
+		return nbThreads;
 	}
 
 	public Encoding getEncoding() throws ReaderException, IOException,
@@ -204,7 +205,7 @@ public class AppRewriting
 			BuilderException, CodeGeneratorException
 	{
 		makeContext();
-		int nbThreads = Integer
+		nbThreads = Integer
 				.parseInt(options.getOption("sys.nbThreads", "1"));
 		Instant start;
 		Instant end;
