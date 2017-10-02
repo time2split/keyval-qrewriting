@@ -5,10 +5,12 @@
 		- display.queries Afficher les requêtes
 		- display.codes   Afficher les codes
 		- display.char.endcode  Caractère suivant l'affichage d'un code
+		- display.char.endqueries  Caractère suivant l'affichage des requêtes
 *###
-#set( $displayq = $r.options.getOption("display.queries",true) )
-#set( $displayc = $r.options.getOption("display.codes",true) )
-#set( $endcode  = $r.options.getOption("display.char.endcode"," ") )
+#set( $displayq    = $r.options.getOption("display.queries",true) )
+#set( $displayc    = $r.options.getOption("display.codes",true) )
+#set( $endcode     = $r.options.getOption("display.char.endcode"," ") )
+#set( $endqueries  = $r.options.getOption("display.char.endqueries","") )
 #if( $displayq == true )
 #foreach($Q in $r.queries)
 #if($displayc)
@@ -16,6 +18,7 @@ $Q.code$endcode##
 #end
 $Q.q
 #end
+$endqueries##
 #else
 $r.compute()
 #end
