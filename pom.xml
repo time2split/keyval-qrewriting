@@ -15,6 +15,17 @@
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<maven.compiler.source>1.8</maven.compiler.source>
 	</properties>
+	
+	<repositories>
+		<repository>
+			<id>insomnia.mvn-repo</id>
+			<url>https://raw.github.com/zuri66/mvn-repo/master/</url>
+			<snapshots>
+				<enabled>true</enabled>
+				<updatePolicy>always</updatePolicy>
+			</snapshots>
+		</repository>
+	</repositories>
 
 	<dependencies>
 		<dependency>
