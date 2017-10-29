@@ -24,7 +24,7 @@ import insomnia.json.JsonBuilderException;
 import insomnia.json.JsonReader;
 import insomnia.json.JsonWriter;
 import insomnia.numeric.Interval;
-import insomnia.qrewritingnorl1.query_building.RuleManagerBuilder_text;
+import insomnia.qrewritingnorl1.query_building.RuleManagerBuilder_textDemo;
 import insomnia.qrewritingnorl1.query_building.mongo.JsonBuilder_query;
 import insomnia.qrewritingnorl1.query_building.mongo.JsonBuilder_query.MODE;
 import insomnia.qrewritingnorl1.query_building.mongo.QueryBuilder_json;
@@ -283,7 +283,7 @@ public class AppRewriting
 
 		String fileRules = coml.getOptionValue('r', app.defr);
 		{
-			new RuleManagerBuilder_text(rules)
+			new RuleManagerBuilder_textDemo(rules)
 					.addLines(Files.readAllLines(Paths.get(fileRules))).build();
 		}
 		makeQuery();
