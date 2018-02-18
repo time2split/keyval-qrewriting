@@ -27,23 +27,28 @@ import insomnia.resource.ResourceUtils;
 
 public class App
 {
-	protected String			version;
-	protected String			deft;
-	protected String			defq;
-	protected String			defr;
-	protected String			pathTemplate;	// Chemin vers la ressource
-												// dossier 'template'
+	protected final String		version;
+	protected final String		deft;
+	protected final String		defq;
+	protected final String		defr;
+	protected final String		defDriver;
+	/**
+	 * Chemin vers la ressource dossier 'template'
+	 */
+	protected final String		pathTemplate;
 	private String				fileTemplate;
 
 	protected Options			options;
 	protected CommandLine		coml;
 	protected VelocityContext	vcontext;
 
+	public App()
 	{
 		version = "1.0-SNAPSHOT";
 		deft = "@default";
 		defq = "query";
 		defr = "rules";
+		defDriver = "@internal";
 		pathTemplate = "/insomnia/qrewriting/template/";
 	}
 
@@ -55,6 +60,11 @@ public class App
 	final public CommandLine getCommandLine()
 	{
 		return coml;
+	}
+
+	public String getOptionDBDriver()
+	{
+		return coml.getOptionValue('d', this.defDriver);
 	}
 
 	/**
@@ -96,6 +106,8 @@ public class App
 				.desc("Query file").hasArg().build());
 		ret.addOption(Option.builder("r").longOpt("file-rules")
 				.desc("Rules file").hasArg().build());
+		ret.addOption(Option.builder("d").longOpt("db-driver")
+				.desc("Database driver").hasArg().build());
 		ret.addOption(Option.builder("h").longOpt("help").desc("Help").build());
 		ret.addOption(Option.builder().longOpt("display-template")
 				.desc("Display the template and exit").build());
@@ -105,7 +117,7 @@ public class App
 		return ret;
 	}
 
-	protected void createVelocityContext()
+	protected void createVelocityContext() throws ClassNotFoundException, Exception
 	{
 		vcontext = new VelocityContext();
 		AppRewriting apprewriting = new AppRewriting(this);
@@ -133,12 +145,6 @@ public class App
 		format.printHelp("Query rewriting " + version + "\n\n",
 			"Use query rewriting with norl(1) rules\n", options,
 			"\nContact : webzuri@gmail.com\n");
-	}
-
-	public static void main(String[] args)
-	{
-		App app = new App();
-		app.execute(args);
 	}
 
 	protected void execute(String[] args)
@@ -216,5 +222,11 @@ public class App
 		{
 			e.printStackTrace();
 		}
+	}
+
+	public static void main(String[] args)
+	{
+		App app = new App();
+		app.execute(args);
 	}
 }

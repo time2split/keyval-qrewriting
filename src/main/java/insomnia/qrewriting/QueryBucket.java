@@ -1,6 +1,6 @@
 package insomnia.qrewriting;
 
-import insomnia.qrewritingnorl1.query_rewriting.code.Code;
+import insomnia.qrewriting.query_rewriting.code.Code;
 
 /**
  * Stocke les informations d'une requête pour Velocity

@@ -1,7 +1,6 @@
 package insomnia.qrewriting;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -16,31 +15,25 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.io.IOUtils;
 
-import insomnia.builder.BuilderException;
-import insomnia.json.Json;
-import insomnia.json.JsonBuilder;
-import insomnia.json.JsonBuilderException;
-import insomnia.json.JsonReader;
-import insomnia.json.JsonWriter;
 import insomnia.numeric.Interval;
-import insomnia.qrewritingnorl1.query_building.RuleManagerBuilder_textDemo;
-import insomnia.qrewritingnorl1.query_building.mongo.JsonBuilder_query;
-import insomnia.qrewritingnorl1.query_building.mongo.JsonBuilder_query.MODE;
-import insomnia.qrewritingnorl1.query_building.mongo.QueryBuilder_json;
-import insomnia.qrewritingnorl1.query_rewriting.code.Encoding;
-import insomnia.qrewritingnorl1.query_rewriting.generator.CodeGenerator;
-import insomnia.qrewritingnorl1.query_rewriting.generator.CodeGeneratorException;
-import insomnia.qrewritingnorl1.query_rewriting.generator.CodeGenerator_simple;
-import insomnia.qrewritingnorl1.query_rewriting.qpu.QPU;
-import insomnia.qrewritingnorl1.query_rewriting.qpu.QPUSimple;
-import insomnia.qrewritingnorl1.query_rewriting.query.Query;
-import insomnia.qrewritingnorl1.query_rewriting.query.QueryBuilderException;
-import insomnia.qrewritingnorl1.query_rewriting.rule.RuleManager;
-import insomnia.qrewritingnorl1.query_rewriting.thread.QThreadManager;
-import insomnia.qrewritingnorl1.query_rewriting.thread.QThreadResult;
+import insomnia.qrewriting.database.Driver;
+import insomnia.qrewriting.database.driver.DriverQueryBuilder;
+import insomnia.qrewriting.query_building.RuleManagerBuilder_textDemo;
+import insomnia.qrewriting.query_rewriting.code.Encoding;
+import insomnia.qrewriting.query_rewriting.generator.CodeGenerator;
+import insomnia.qrewriting.query_rewriting.generator.CodeGeneratorException;
+import insomnia.qrewriting.query_rewriting.generator.CodeGenerator_simple;
+import insomnia.qrewriting.query_rewriting.qpu.QPU;
+import insomnia.qrewriting.query_rewriting.qpu.QPUSimple;
+import insomnia.qrewriting.query_rewriting.query.Query;
+import insomnia.qrewriting.query_rewriting.query.QueryBuilderException;
+import insomnia.qrewriting.query_rewriting.query.QueryManager;
+import insomnia.qrewriting.query_rewriting.rule.RuleManager;
+import insomnia.qrewriting.query_rewriting.thread.QThreadManager;
+import insomnia.qrewriting.query_rewriting.thread.QThreadResult;
 import insomnia.reader.ReaderException;
-import insomnia.writer.WriterException;
 
 /**
  * Classe accessible dans le template Velocity
@@ -51,18 +44,20 @@ import insomnia.writer.WriterException;
 public class AppRewriting
 {
 	private CommandLine					coml;
-	private HashMap<String, Duration>	times		= new HashMap<>();
-	private RuleManager					rules		= new RuleManager();
-	private Query						query		= null;
-	private Encoding					encoding	= new Encoding();
+	private HashMap<String, Duration>	times			= new HashMap<>();
+	private RuleManager					rules			= new RuleManager();
+	private Query						query			= null;
+	private Encoding					encoding		= new Encoding();
 	private ArrayList<Query>			queries;
-	final private JsonWriter			writer		= new JsonWriter();
+	// final private JsonWriter writer = new JsonWriter();
 
 	private Options						options;
 	private App							app;
-	private int							nbThreads	= 0;
+	private int							nbThreads		= 0;
+	private AppDriverManager			driverManager	= new AppDriverManager();
+	private Driver						driver;
 
-	public AppRewriting(App app)
+	public AppRewriting(App app) throws ClassNotFoundException, Exception
 	{
 		this.app = app;
 		coml = app.getCommandLine();
@@ -83,44 +78,8 @@ public class AppRewriting
 		}
 		sysdef.putAll(comprop);
 		options = new Options(sysdef);
-	}
 
-	/**
-	 * A appeler avant toute écriture avec le writer
-	 */
-	private void initJSWriter()
-	{
-		writer.getOptions().setCompact(
-			options.getOption("json.prettyPrint").equals("false") ? true
-					: false);
-	}
-
-	// Temporaire jusqu'à de nouveaux drivers
-	private JsonBuilder newJSBuilder(Query q) throws JsonBuilderException
-	{
-		JsonBuilder_query b = new JsonBuilder_query(q);
-		JsonBuilder_query.MODE m = null;
-		String omode = options.getOption("json.mongo.mode", "");
-
-		switch (omode.toLowerCase())
-		{
-		case "dot":
-			m = MODE.DOT;
-			break;
-		case "elemmatch":
-		case "ematch":
-			m = MODE.ELEMMATCH;
-			break;
-		case "":
-			break;
-		default:
-			throw new JsonBuilderException(
-				"Value of json.mongo.mode '" + omode + "' unknow");
-		}
-		if (m != null)
-			b.setMode(m);
-
-		return b;
+		driver = driverManager.getDriver(app.getOptionDBDriver());
 	}
 
 	// ===============================================================
@@ -137,15 +96,13 @@ public class AppRewriting
 		return nbThreads;
 	}
 
-	public Encoding getEncoding() throws ReaderException, IOException,
-			BuilderException, CodeGeneratorException
+	public Encoding getEncoding() throws Exception
 	{
 		makeContext();
 		return encoding;
 	}
 
-	public Interval getInterval() throws ReaderException, IOException,
-			BuilderException, CodeGeneratorException
+	public Interval getInterval() throws Exception
 	{
 		makeContext();
 		return encoding.generateCodeInterval();
@@ -156,15 +113,13 @@ public class AppRewriting
 		return times;
 	}
 
-	public long getNbCodes() throws ReaderException, IOException,
-			BuilderException, CodeGeneratorException
+	public long getNbCodes() throws Exception
 	{
 		makeContext();
 		return encoding.getTotalNbStates();
 	}
 
-	public void compute() throws ReaderException, IOException, BuilderException,
-			CodeGeneratorException
+	public void compute() throws Exception
 	{
 		makeQueries();
 	}
@@ -172,37 +127,31 @@ public class AppRewriting
 	/*
 	 * Récupère la requête de base
 	 */
-	public String getQuery() throws QueryBuilderException, ReaderException,
-			IOException, JsonBuilderException, WriterException
+	public String getQuery() throws Exception
 	{
 		makeQuery();
-		initJSWriter();
 
-		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-		Json json = newJSBuilder(query).newBuild();
-		writer.setDestination(buffer);
-		writer.write(json);
-		return buffer.toString();
+		QueryManager queryManager = (QueryManager) driver.getQueryManagerClass()
+				.getConstructor().newInstance();
+		queryManager.setQueries(query);
+		return queryManager.getStrFormat()[0];
 	}
 
-	public ArrayList<QueryBucket> getQueries()
-			throws ReaderException, IOException, BuilderException,
-			CodeGeneratorException, WriterException
+	public ArrayList<QueryBucket> getQueries() throws Exception
 	{
-		ArrayList<QueryBucket> ret = new ArrayList<>();
 		makeQueries();
+
+		ArrayList<QueryBucket> ret = new ArrayList<>();
 		long i = encoding.generateCodeInterval().geta();
-		initJSWriter();
+
+		QueryManager queryManager = (QueryManager) driver.getQueryManagerClass()
+				.getConstructor().newInstance();
 
 		for (Query q : queries)
 		{
-			ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-			Json json = newJSBuilder(q).newBuild();
-			writer.setDestination(buffer);
-
-			writer.write(json);
-			ret.add(new QueryBucket(buffer.toString(), i,
-				encoding.getCodeFrom((int) (i))));
+			queryManager.setQueries(q);
+			ret.add(new QueryBucket(queryManager.getStrFormat()[0].toString(),
+				i, encoding.getCodeFrom((int) (i))));
 			i++;
 		}
 		return ret;
@@ -210,22 +159,25 @@ public class AppRewriting
 
 	// ===============================================================
 
-	private void makeQuery()
-			throws ReaderException, IOException, QueryBuilderException
+	private void makeQuery() throws Exception
 	{
 		if (query != null)
 			return;
-		query = new Query();
+
+		Driver driver = driverManager.getDriver("@internal");
+
+		Class<?> queryBuilderClass = driver.getQueryBuilderClass();
+		DriverQueryBuilder queryBuilder = (DriverQueryBuilder) queryBuilderClass
+				.getDeclaredConstructor().newInstance();
+
 		String fileQuery = coml.getOptionValue('q', app.defq);
-		JsonReader jsreader = new JsonReader(new File(fileQuery));
-		jsreader.getOptions().setStrict(false);
-		Json json = jsreader.read();
-		jsreader.close();
-		new QueryBuilder_json(query, json).build();
+
+		queryBuilder
+				.setReader(IOUtils.toBufferedReader(new FileReader(fileQuery)));
+		query = queryBuilder.newBuild();
 	}
 
-	private void makeQueries() throws ReaderException, IOException,
-			BuilderException, CodeGeneratorException
+	private void makeQueries() throws Exception
 	{
 		makeContext();
 		nbThreads = Integer.parseInt(options.getOption("sys.nbThreads", "1"));
@@ -275,8 +227,7 @@ public class AppRewriting
 	 * @throws QueryBuilderException
 	 * @throws CodeGeneratorException
 	 */
-	private void makeContext() throws ReaderException, IOException,
-			BuilderException, CodeGeneratorException
+	private void makeContext() throws Exception
 	{
 		if (times.get("generation") != null)
 			return;
