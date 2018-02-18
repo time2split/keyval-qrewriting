@@ -18,21 +18,21 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.io.IOUtils;
 
 import insomnia.numeric.Interval;
+import insomnia.qrewriting.code.Encoding;
 import insomnia.qrewriting.database.Driver;
 import insomnia.qrewriting.database.driver.DriverQueryBuilder;
+import insomnia.qrewriting.generator.CodeGenerator;
+import insomnia.qrewriting.generator.CodeGeneratorException;
+import insomnia.qrewriting.generator.CodeGenerator_simple;
+import insomnia.qrewriting.qpu.QPU;
+import insomnia.qrewriting.qpu.QPUSimple;
+import insomnia.qrewriting.query.Query;
+import insomnia.qrewriting.query.QueryBuilderException;
+import insomnia.qrewriting.query.QueryManager;
 import insomnia.qrewriting.query_building.RuleManagerBuilder_textDemo;
-import insomnia.qrewriting.query_rewriting.code.Encoding;
-import insomnia.qrewriting.query_rewriting.generator.CodeGenerator;
-import insomnia.qrewriting.query_rewriting.generator.CodeGeneratorException;
-import insomnia.qrewriting.query_rewriting.generator.CodeGenerator_simple;
-import insomnia.qrewriting.query_rewriting.qpu.QPU;
-import insomnia.qrewriting.query_rewriting.qpu.QPUSimple;
-import insomnia.qrewriting.query_rewriting.query.Query;
-import insomnia.qrewriting.query_rewriting.query.QueryBuilderException;
-import insomnia.qrewriting.query_rewriting.query.QueryManager;
-import insomnia.qrewriting.query_rewriting.rule.RuleManager;
-import insomnia.qrewriting.query_rewriting.thread.QThreadManager;
-import insomnia.qrewriting.query_rewriting.thread.QThreadResult;
+import insomnia.qrewriting.rule.RuleManager;
+import insomnia.qrewriting.thread.QThreadManager;
+import insomnia.qrewriting.thread.QThreadResult;
 import insomnia.reader.ReaderException;
 
 /**
