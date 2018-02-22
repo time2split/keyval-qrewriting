@@ -170,7 +170,7 @@ public class AppRewriting
 		DriverQueryBuilder queryBuilder = (DriverQueryBuilder) queryBuilderClass
 				.getDeclaredConstructor().newInstance();
 
-		String fileQuery = coml.getOptionValue('q', app.defq);
+		String fileQuery = coml.getOptionValue('q', app.properties.getProperty("file.query"));
 
 		queryBuilder
 				.setReader(IOUtils.toBufferedReader(new FileReader(fileQuery)));
@@ -232,7 +232,7 @@ public class AppRewriting
 		if (times.get("generation") != null)
 			return;
 
-		String fileRules = coml.getOptionValue('r', app.defr);
+		String fileRules = coml.getOptionValue('r', app.properties.getProperty("file.rules"));
 		{
 			new RuleManagerBuilder_textDemo(rules)
 					.addLines(Files.readAllLines(Paths.get(fileRules))).build();

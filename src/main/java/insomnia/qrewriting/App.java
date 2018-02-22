@@ -27,29 +27,18 @@ import insomnia.resource.ResourceUtils;
 
 public class App
 {
-	protected final String		version;
-	protected final String		deft;
-	protected final String		defq;
-	protected final String		defr;
-	protected final String		defDriver;
-	/**
-	 * Chemin vers la ressource dossier 'template'
-	 */
-	protected final String		pathTemplate;
+	protected final Properties	properties;
+
 	private String				fileTemplate;
 
 	protected Options			options;
 	protected CommandLine		coml;
 	protected VelocityContext	vcontext;
 
-	public App()
+	public App() throws IOException
 	{
-		version = "1.0-SNAPSHOT";
-		deft = "@default";
-		defq = "query";
-		defr = "rules";
-		defDriver = "@internal";
-		pathTemplate = "/insomnia/qrewriting/template/";
+		properties = new Properties();
+		properties.load(IOUtils.buffer(new InputStreamReader(App.class.getResourceAsStream("default.properties"))));
 	}
 
 	final public Options getOptions()
@@ -64,7 +53,7 @@ public class App
 
 	public String getOptionDBDriver()
 	{
-		return coml.getOptionValue('d', this.defDriver);
+		return coml.getOptionValue('d', properties.getProperty("database.driver"));
 	}
 
 	/**
@@ -77,7 +66,7 @@ public class App
 	{
 		try
 		{
-			return ResourceUtils.getResourcesOf(App.class, pathTemplate);
+			return ResourceUtils.getResourcesOf(App.class, properties.getProperty("path.templates"));
 		}
 		catch (URISyntaxException | IOException e)
 		{
@@ -117,7 +106,8 @@ public class App
 		return ret;
 	}
 
-	protected void createVelocityContext() throws ClassNotFoundException, Exception
+	protected void createVelocityContext()
+			throws ClassNotFoundException, Exception
 	{
 		vcontext = new VelocityContext();
 		AppRewriting apprewriting = new AppRewriting(this);
@@ -142,7 +132,7 @@ public class App
 	protected void printHelp()
 	{
 		HelpFormatter format = new HelpFormatter();
-		format.printHelp("Query rewriting " + version + "\n\n",
+		format.printHelp("Query rewriting " + properties.getProperty("version") + "\n\n",
 			"Use query rewriting with norl(1) rules\n", options,
 			"\nContact : webzuri@gmail.com\n");
 	}
@@ -180,7 +170,7 @@ public class App
 				printHelp();
 				return;
 			}
-			fileTemplate = coml.getOptionValue('t', deft);
+			fileTemplate = coml.getOptionValue('t', properties.getProperty("file.template"));
 
 			if (fileTemplate.charAt(0) == '@')
 			{
@@ -189,7 +179,7 @@ public class App
 				if (!name.endsWith(".vm"))
 					name += ".vm";
 
-				fileTemplate = pathTemplate + name;
+				fileTemplate = properties.getProperty("path.templates") + name;
 				internalTemplate = true;
 			}
 
@@ -224,7 +214,7 @@ public class App
 		}
 	}
 
-	public static void main(String[] args)
+	public static void main(String[] args) throws IOException
 	{
 		App app = new App();
 		app.execute(args);
