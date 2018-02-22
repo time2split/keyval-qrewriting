@@ -7,10 +7,10 @@
 		- display.char.endcode  Caractère suivant l'affichage d'un code
 		- display.char.endqueries  Caractère suivant l'affichage des requêtes
 *###
-#set( $displayq    = $r.options.getOption("display.queries",true) )
-#set( $displayc    = $r.options.getOption("display.codes",true) )
-#set( $endcode     = $r.options.getOption("display.char.endcode"," ") )
-#set( $endqueries  = $r.options.getOption("display.char.endqueries","") )
+#set( $displayq    = $r.getOption("display.queries",true) )
+#set( $displayc    = $r.getOption("display.codes",true) )
+#set( $endcode     = $r.getOption("display.char.endcode"," ") )
+#set( $endqueries  = $r.getOption("display.char.endqueries","") )
 #if( $displayq == true )
 #foreach($Q in $r.queries)
 #if($displayc)

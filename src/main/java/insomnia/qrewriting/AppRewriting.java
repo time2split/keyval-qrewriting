@@ -3,7 +3,6 @@ package insomnia.qrewriting;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.InvalidParameterException;
@@ -14,7 +13,6 @@ import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
-import org.apache.commons.cli.CommandLine;
 import org.apache.commons.io.IOUtils;
 
 import insomnia.numeric.Interval;
@@ -43,14 +41,13 @@ import insomnia.reader.ReaderException;
  */
 public class AppRewriting
 {
-	private CommandLine					coml;
 	private HashMap<String, Duration>	times			= new HashMap<>();
 	private RuleManager					rules			= new RuleManager();
 	private Query						query			= null;
 	private Encoding					encoding		= new Encoding();
 	private ArrayList<Query>			queries;
-	// final private JsonWriter writer = new JsonWriter();
 
+	private Properties					defaultOptions;
 	private Options						options;
 	private App							app;
 	private int							nbThreads		= 0;
@@ -60,22 +57,18 @@ public class AppRewriting
 	public AppRewriting(App app) throws ClassNotFoundException, Exception
 	{
 		this.app = app;
-		coml = app.getCommandLine();
 		times.put("generation", null);
 		times.put("computation", null);
 
-		Properties comprop = coml.getOptionProperties("O");
+		Properties comprop = app.coml.getOptionProperties("O");
 		Properties sysdef = new Properties();
+		sysdef.load(new InputStreamReader(
+			AppRewriting.class.getResourceAsStream("default.properties")));
 
-		try
-		{
-			URL resource = AppRewriting.class.getResource("default.properties");
-			sysdef.load(new InputStreamReader(resource.openStream(), "UTF8"));
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
+		defaultOptions = new Properties();
+		defaultOptions.load(new InputStreamReader(
+			AppRewriting.class.getResourceAsStream("options.properties")));
+
 		sysdef.putAll(comprop);
 		options = new Options(sysdef);
 
@@ -86,9 +79,19 @@ public class AppRewriting
 	// VELOCITY ACCESS
 	// ===============================================================
 
-	public Options getOptions()
+	/**
+	 * 
+	 * @param name
+	 * @return String|null null si option inexistante
+	 */
+	public String getOption(String name)
 	{
-		return options;
+		return getOption(name, null);
+	}
+
+	public String getOption(String name, String def)
+	{
+		return options.getOption(name, defaultOptions.getProperty(name, def));
 	}
 
 	public int getNbThreads()
@@ -170,7 +173,7 @@ public class AppRewriting
 		DriverQueryBuilder queryBuilder = (DriverQueryBuilder) queryBuilderClass
 				.getDeclaredConstructor().newInstance();
 
-		String fileQuery = coml.getOptionValue('q', app.properties.getProperty("file.query"));
+		String fileQuery = app.getOptionQuery();
 
 		queryBuilder
 				.setReader(IOUtils.toBufferedReader(new FileReader(fileQuery)));
@@ -180,7 +183,7 @@ public class AppRewriting
 	private void makeQueries() throws Exception
 	{
 		makeContext();
-		nbThreads = Integer.parseInt(options.getOption("sys.nbThreads", "1"));
+		nbThreads = Integer.parseInt(getOption("sys.nbThreads", "1"));
 		Instant start;
 		Instant end;
 
@@ -209,12 +212,14 @@ public class AppRewriting
 			catch (InterruptedException | ExecutionException e)
 			{
 				e.printStackTrace();
+				System.exit(1);
 			}
 		}
 		else
+		{
 			throw new InvalidParameterException("Bad parameter sys.nbThreads="
-					+ options.getOption("sys.nbThreads"));
-
+					+ getOption("sys.nbThreads"));
+		}
 		end = Instant.now();
 		times.put("computation", Duration.between(start, end));
 	}
@@ -232,7 +237,7 @@ public class AppRewriting
 		if (times.get("generation") != null)
 			return;
 
-		String fileRules = coml.getOptionValue('r', app.properties.getProperty("file.rules"));
+		String fileRules = app.getOptionRules();
 		{
 			new RuleManagerBuilder_textDemo(rules)
 					.addLines(Files.readAllLines(Paths.get(fileRules))).build();

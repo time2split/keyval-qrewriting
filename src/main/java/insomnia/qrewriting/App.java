@@ -38,22 +38,24 @@ public class App
 	public App() throws IOException
 	{
 		properties = new Properties();
-		properties.load(IOUtils.buffer(new InputStreamReader(App.class.getResourceAsStream("default.properties"))));
+		properties.load(IOUtils.buffer(new InputStreamReader(
+			App.class.getResourceAsStream("default.properties"))));
 	}
 
-	final public Options getOptions()
+	public String getOptionQuery()
 	{
-		return options;
+		return coml.getOptionValue('q', properties.getProperty("file.query"));
 	}
 
-	final public CommandLine getCommandLine()
+	public String getOptionRules()
 	{
-		return coml;
+		return coml.getOptionValue('r', properties.getProperty("file.rules"));
 	}
 
 	public String getOptionDBDriver()
 	{
-		return coml.getOptionValue('d', properties.getProperty("database.driver"));
+		return coml.getOptionValue('d',
+			properties.getProperty("database.driver"));
 	}
 
 	/**
@@ -66,11 +68,13 @@ public class App
 	{
 		try
 		{
-			return ResourceUtils.getResourcesOf(App.class, properties.getProperty("path.templates"));
+			return ResourceUtils.getResourcesOf(App.class,
+				properties.getProperty("path.templates"));
 		}
 		catch (URISyntaxException | IOException e)
 		{
 			e.printStackTrace();
+			System.exit(1);
 		}
 		return new String[0];
 	}
@@ -89,8 +93,6 @@ public class App
 		template.addOption(Option.builder("t").longOpt("file-template")
 				.desc("Template of the output \n" + templates + "\n").hasArg()
 				.build());
-		// template.addOption(Option.builder("T").longOpt("template")
-		// .desc("Direct input of the template").hasArg().build());
 		ret.addOption(Option.builder("q").longOpt("file-query")
 				.desc("Query file").hasArg().build());
 		ret.addOption(Option.builder("r").longOpt("file-rules")
@@ -132,12 +134,13 @@ public class App
 	protected void printHelp()
 	{
 		HelpFormatter format = new HelpFormatter();
-		format.printHelp("Query rewriting " + properties.getProperty("version") + "\n\n",
+		format.printHelp(
+			"Query rewriting " + properties.getProperty("version") + "\n\n",
 			"Use query rewriting with norl(1) rules\n", options,
 			"\nContact : webzuri@gmail.com\n");
 	}
 
-	protected void execute(String[] args)
+	protected void execute(String[] args) throws Exception
 	{
 		// Init de Velocity
 		{
@@ -158,7 +161,6 @@ public class App
 		}
 		options = makeOptions();
 
-		try
 		{
 			DefaultParser parser = new DefaultParser();
 			coml = parser.parse(options, args);
@@ -170,7 +172,8 @@ public class App
 				printHelp();
 				return;
 			}
-			fileTemplate = coml.getOptionValue('t', properties.getProperty("file.template"));
+			fileTemplate = coml.getOptionValue('t',
+				properties.getProperty("file.template"));
 
 			if (fileTemplate.charAt(0) == '@')
 			{
@@ -208,13 +211,9 @@ public class App
 			program();
 			velocityExecute();
 		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
 	}
 
-	public static void main(String[] args) throws IOException
+	public static void main(String[] args) throws Exception
 	{
 		App app = new App();
 		app.execute(args);

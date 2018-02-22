@@ -4,7 +4,7 @@
 	Options
 		- $sep Séparateur à la fin de chaque requête
 *#
-#set( $sep = $r.options.getOption("sep","
+#set( $sep = $r.getOption("sep","
 ") )
 #foreach($q in $r.queries)
 $q.q$sep#end

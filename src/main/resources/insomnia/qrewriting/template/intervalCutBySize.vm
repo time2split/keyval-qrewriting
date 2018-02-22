@@ -4,7 +4,7 @@
 	Options :
 		- interval.size La taille de chacun des intervalles à générer
 *#
-#set( $size = $r.options.getOption("interval.size",100) )
+#set( $size = $r.getOption("interval.size",100) )
 #foreach( $i in $r.interval.cutBySizeOfIntervals($size) )
 $i
 #end
