@@ -1,5 +1,7 @@
 package insomnia.qrewriting;
 
+import java.util.Properties;
+
 import org.apache.commons.lang3.NotImplementedException;
 
 import insomnia.qrewriting.database.Driver;
@@ -34,7 +36,7 @@ public class AppDriverManager extends DriverManager
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Driver getDriver(String driverName)
+	public Driver getDriver(String driverName, Properties options)
 			throws ClassNotFoundException, Exception
 	{
 		Driver driver = drivers.get(driverName);
@@ -60,6 +62,7 @@ public class AppDriverManager extends DriverManager
 			throw new NotImplementedException("TODO file access");
 		}
 		drivers.put(driverName, driver);
+		driver.setOptions(options);
 		driver.load();
 		return driver;
 	}

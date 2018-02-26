@@ -47,8 +47,8 @@ public class AppRewriting
 	private Encoding					encoding		= new Encoding();
 	private ArrayList<Query>			queries;
 
-	private Properties					defaultOptions;
-	private Options						options;
+	// private Properties defaultOptions;
+	private Properties					options;
 	private App							app;
 	private int							nbThreads		= 0;
 	private AppDriverManager			driverManager	= new AppDriverManager();
@@ -65,14 +65,13 @@ public class AppRewriting
 		sysdef.load(new InputStreamReader(
 			AppRewriting.class.getResourceAsStream("default.properties")));
 
-		defaultOptions = new Properties();
+		Properties defaultOptions = new Properties();
 		defaultOptions.load(new InputStreamReader(
 			AppRewriting.class.getResourceAsStream("options.properties")));
 
-		sysdef.putAll(comprop);
-		options = new Options(sysdef);
-
-		driver = driverManager.getDriver(app.getOptionDBDriver());
+		options = new Properties(defaultOptions);
+		options.putAll(comprop);
+		driver = driverManager.getDriver(app.getOptionDBDriver(), options);
 	}
 
 	// ===============================================================
@@ -86,12 +85,12 @@ public class AppRewriting
 	 */
 	public String getOption(String name)
 	{
-		return getOption(name, null);
+		return getOption(name,"");
 	}
 
 	public String getOption(String name, String def)
 	{
-		return options.getOption(name, defaultOptions.getProperty(name, def));
+		return options.getProperty(name,def);
 	}
 
 	public int getNbThreads()
@@ -134,8 +133,7 @@ public class AppRewriting
 	{
 		makeQuery();
 
-		QueryManager queryManager = (QueryManager) driver.getQueryManagerClass()
-				.getConstructor().newInstance();
+		QueryManager queryManager = driver.getAQueryManager();
 		queryManager.setQueries(query);
 		return queryManager.getStrFormat()[0];
 	}
@@ -147,8 +145,7 @@ public class AppRewriting
 		ArrayList<QueryBucket> ret = new ArrayList<>();
 		long i = encoding.generateCodeInterval().geta();
 
-		QueryManager queryManager = (QueryManager) driver.getQueryManagerClass()
-				.getConstructor().newInstance();
+		QueryManager queryManager = driver.getAQueryManager();
 
 		for (Query q : queries)
 		{
@@ -167,7 +164,7 @@ public class AppRewriting
 		if (query != null)
 			return;
 
-		Driver driver = driverManager.getDriver("@internal");
+		Driver driver = driverManager.getDriver("@internal", options);
 
 		Class<?> queryBuilderClass = driver.getQueryBuilderClass();
 		DriverQueryBuilder queryBuilder = (DriverQueryBuilder) queryBuilderClass
@@ -217,8 +214,8 @@ public class AppRewriting
 		}
 		else
 		{
-			throw new InvalidParameterException("Bad parameter sys.nbThreads="
-					+ getOption("sys.nbThreads"));
+			throw new InvalidParameterException(
+				"Bad parameter sys.nbThreads=" + getOption("sys.nbThreads"));
 		}
 		end = Instant.now();
 		times.put("computation", Duration.between(start, end));
