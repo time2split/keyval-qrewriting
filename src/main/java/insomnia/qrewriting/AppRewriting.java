@@ -9,6 +9,7 @@ import java.security.InvalidParameterException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
@@ -19,6 +20,7 @@ import insomnia.numeric.Interval;
 import insomnia.qrewriting.code.Encoding;
 import insomnia.qrewriting.database.Driver;
 import insomnia.qrewriting.database.driver.DriverQueryBuilder;
+import insomnia.qrewriting.database.driver.DriverQueryManager;
 import insomnia.qrewriting.generator.CodeGenerator;
 import insomnia.qrewriting.generator.CodeGeneratorException;
 import insomnia.qrewriting.generator.CodeGenerator_simple;
@@ -85,12 +87,12 @@ public class AppRewriting
 	 */
 	public String getOption(String name)
 	{
-		return getOption(name,"");
+		return getOption(name, "");
 	}
 
 	public String getOption(String name, String def)
 	{
-		return options.getProperty(name,def);
+		return options.getProperty(name, def);
 	}
 
 	public int getNbThreads()
@@ -216,6 +218,16 @@ public class AppRewriting
 		{
 			throw new InvalidParameterException(
 				"Bad parameter sys.nbThreads=" + getOption("sys.nbThreads"));
+		}
+
+		String optVal = options.getProperty("queries.merge.sizeOfQuery");
+
+		if (optVal != null)
+		{
+			final int size = Integer.parseInt(optVal);
+			DriverQueryManager manager = driver.getAQueryManager();
+			Query[] tmp = manager.mergeBySizeOfQueries(size,queries);
+			queries = new ArrayList<>(Arrays.asList(tmp));
 		}
 		end = Instant.now();
 		times.put("computation", Duration.between(start, end));
