@@ -223,12 +223,21 @@ public class AppRewriting
 		String optVal = options.getProperty("queries.merge.sizeOfQuery");
 
 		if (optVal != null)
-		{
-			final int size = Integer.parseInt(optVal);
-			DriverQueryManager manager = driver.getAQueryManager();
-			Query[] tmp = manager.mergeBySizeOfQueries(size,queries);
-			queries = new ArrayList<>(Arrays.asList(tmp));
-		}
+			merge:
+			{
+				final int size = Integer.parseInt(optVal);
+
+				if (size == 1)
+					break merge;
+				if(size == 0)
+				{
+					queries.clear();
+					break merge;
+				}
+				DriverQueryManager manager = driver.getAQueryManager();
+				Query[] tmp = manager.mergeBySizeOfQueries(size, queries);
+				queries = new ArrayList<>(Arrays.asList(tmp));
+			}
 		end = Instant.now();
 		times.put("computation", Duration.between(start, end));
 	}
