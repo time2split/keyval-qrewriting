@@ -151,9 +151,7 @@ public class AppRewriting
 
 		for (Query q : queries)
 		{
-			queryManager.setQueries(q);
-			ret.add(new QueryBucket(queryManager.getStrFormat()[0].toString(),
-				i, encoding.getCodeFrom((int) (i))));
+			ret.add(new QueryBucket(q, i, encoding.getCodeFrom((int) (i)),queryManager));
 			i++;
 		}
 		return ret;
@@ -229,7 +227,7 @@ public class AppRewriting
 
 				if (size == 1)
 					break merge;
-				if(size == 0)
+				if (size == 0)
 				{
 					queries.clear();
 					break merge;
