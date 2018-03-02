@@ -34,7 +34,7 @@ public class QueryBucket
 	{
 		try
 		{
-			return queryManager.getStrFormat(q)[0];
+			return queryManager.getStrFormat(q);
 		}
 		catch (Exception e)
 		{

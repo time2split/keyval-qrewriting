@@ -5,12 +5,19 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -22,6 +29,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
+import org.apache.velocity.exception.MethodInvocationException;
 
 import insomnia.resource.ResourceUtils;
 
@@ -34,28 +42,68 @@ public class App
 	protected Options			options;
 	protected CommandLine		coml;
 	protected VelocityContext	vcontext;
+	protected AppDriverManager	driverManager;
 
-	public App() throws IOException
+	public App() throws Exception
 	{
 		properties = new Properties();
 		properties.load(IOUtils.buffer(new InputStreamReader(
 			App.class.getResourceAsStream("default.properties"))));
+
 	}
 
-	public String getOptionQuery()
+	public String getDefault(String name)
 	{
-		return coml.getOptionValue('q', properties.getProperty("file.query"));
+		assert properties.containsKey(
+			name) : "The default property file must have the property '" + name
+					+ "'";
+		return properties.getProperty(name);
+
 	}
 
-	public String getOptionRules()
+	public String getOption(String name)
 	{
-		return coml.getOptionValue('r', properties.getProperty("file.rules"));
+		return coml.getOptionValue(name, getDefault(name));
 	}
 
-	public String getOptionDBDriver()
+	private ArrayList<URL> getDriversLocations() throws Exception
 	{
-		return coml.getOptionValue('d',
-			properties.getProperty("database.driver"));
+		ArrayList<URL> ret = new ArrayList<>();
+		String[] paths = getOption("drivers.paths").split(":");
+		FileSystem fs = FileSystems.getDefault();
+		PathMatcher matcher = fs.getPathMatcher("glob:*.{jar,zip}");
+
+		for (String path : paths)
+		{
+			Path cpath = Paths.get(path);
+			cpath.normalize();
+
+			if (Files.exists(cpath))
+			{
+				if (Files.isDirectory(cpath))
+				{
+					List<URL> tmp = Files.list(cpath).filter(p -> matcher.matches(p.getFileName()))
+							.map(p ->
+							{
+								try
+								{
+									return p.toUri().toURL();
+								}
+								catch (MalformedURLException e)
+								{
+									e.printStackTrace();
+								}
+								return null;
+							}).collect(Collectors.toList());
+					ret.addAll(tmp);
+				}
+				else
+				{
+					ret.add(cpath.toUri().toURL());
+				}
+			}
+		}
+		return ret;
 	}
 
 	/**
@@ -69,7 +117,7 @@ public class App
 		try
 		{
 			return ResourceUtils.getResourcesOf(App.class,
-				properties.getProperty("path.templates"));
+				getDefault("sys.path.templates"));
 		}
 		catch (URISyntaxException | IOException e)
 		{
@@ -90,14 +138,16 @@ public class App
 		{
 			templates += "@" + s + "\n";
 		}
-		template.addOption(Option.builder("t").longOpt("file-template")
+		template.addOption(Option.builder("t").longOpt("template")
 				.desc("Template of the output \n" + templates + "\n").hasArg()
 				.build());
-		ret.addOption(Option.builder("q").longOpt("file-query")
+		ret.addOption(Option.builder("q").longOpt("file.query")
 				.desc("Query file").hasArg().build());
-		ret.addOption(Option.builder("r").longOpt("file-rules")
+		ret.addOption(Option.builder("r").longOpt("file.rules")
 				.desc("Rules file").hasArg().build());
-		ret.addOption(Option.builder("d").longOpt("db-driver")
+		ret.addOption(Option.builder("d").longOpt("driver")
+				.desc("Database driver").hasArg().build());
+		ret.addOption(Option.builder("D").longOpt("drivers.paths")
 				.desc("Database driver").hasArg().build());
 		ret.addOption(Option.builder("h").longOpt("help").desc("Help").build());
 		ret.addOption(Option.builder().longOpt("display-template")
@@ -172,8 +222,7 @@ public class App
 				printHelp();
 				return;
 			}
-			fileTemplate = coml.getOptionValue('t',
-				properties.getProperty("file.template"));
+			fileTemplate = getOption("template");
 
 			if (fileTemplate.charAt(0) == '@')
 			{
@@ -182,7 +231,7 @@ public class App
 				if (!name.endsWith(".vm"))
 					name += ".vm";
 
-				fileTemplate = properties.getProperty("path.templates") + name;
+				fileTemplate = getDefault("sys.path.templates") + name;
 				internalTemplate = true;
 			}
 
@@ -207,6 +256,8 @@ public class App
 				System.out.println(template);
 				return;
 			}
+			driverManager = new AppDriverManager(
+				getDriversLocations().toArray(new URL[0]));
 			createVelocityContext();
 			program();
 			velocityExecute();
@@ -216,6 +267,15 @@ public class App
 	public static void main(String[] args) throws Exception
 	{
 		App app = new App();
-		app.execute(args);
+
+		try
+		{
+			app.execute(args);
+		}
+		catch (MethodInvocationException e)
+		{
+			System.err.println(e.getLocalizedMessage());
+			e.getCause().printStackTrace();
+		}
 	}
 }

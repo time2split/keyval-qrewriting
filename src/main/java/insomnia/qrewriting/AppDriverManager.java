@@ -1,30 +1,25 @@
 package insomnia.qrewriting;
 
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Properties;
-
-import org.apache.commons.lang3.NotImplementedException;
 
 import insomnia.qrewriting.database.Driver;
 import insomnia.qrewriting.database.driver.DriverManager;
 
 public class AppDriverManager extends DriverManager
 {
+	private URLClassLoader loader;
 
-	/**
-	 * Tente de charger le driver $driverName, le nom doit être entier (package,
-	 * classe)
-	 * 
-	 * @param className
-	 * @return
-	 * @throws ClassNotFoundException
-	 * @throws IllegalAccessException
-	 * @throws InstantiationException
-	 */
-	private Driver loadDriver(String className) throws ClassNotFoundException,
-			InstantiationException, IllegalAccessException
+	public AppDriverManager(URL... driversLocations)
 	{
-		ClassLoader loader = this.getClass().getClassLoader();
+		loader = new URLClassLoader(driversLocations);
+	}
 
+	private Driver loadDriver(String className, ClassLoader loader)
+			throws ClassNotFoundException, InstantiationException,
+			IllegalAccessException
+	{
 		@SuppressWarnings("unchecked")
 		final Class<Driver> driverClass = (Class<Driver>) loader
 				.loadClass(className);
@@ -52,14 +47,17 @@ public class AppDriverManager extends DriverManager
 			final String className = "insomnia.qrewriting.database.driver."
 					+ driverName.substring(1) + ".TheDriver";
 
-			driver = loadDriver(className);
+			driver = loadDriver(className, loader.getParent());
 		}
 		/*
-		 * TODO: Classe externes
+		 * Classe externes
 		 */
 		else
 		{
-			throw new NotImplementedException("TODO file access");
+			final String className = "insomnia.qrewriting.database.driver."
+					+ driverName + ".TheDriver";
+
+			driver = loadDriver(className, loader);
 		}
 		drivers.put(driverName, driver);
 		driver.setOptions(options);

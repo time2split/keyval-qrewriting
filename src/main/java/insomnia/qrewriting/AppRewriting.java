@@ -49,11 +49,9 @@ public class AppRewriting
 	private Encoding					encoding		= new Encoding();
 	private ArrayList<Query>			queries;
 
-	// private Properties defaultOptions;
 	private Properties					options;
 	private App							app;
 	private int							nbThreads		= 0;
-	private AppDriverManager			driverManager	= new AppDriverManager();
 	private Driver						driver;
 
 	public AppRewriting(App app) throws ClassNotFoundException, Exception
@@ -73,7 +71,7 @@ public class AppRewriting
 
 		options = new Properties(defaultOptions);
 		options.putAll(comprop);
-		driver = driverManager.getDriver(app.getOptionDBDriver(), options);
+		driver = app.driverManager.getDriver(app.getOption("driver"), options);
 	}
 
 	// ===============================================================
@@ -164,13 +162,13 @@ public class AppRewriting
 		if (query != null)
 			return;
 
-		Driver driver = driverManager.getDriver("@internal", options);
+		Driver driver = app.driverManager.getDriver("@internal", options);
 
 		Class<?> queryBuilderClass = driver.getQueryBuilderClass();
 		DriverQueryBuilder queryBuilder = (DriverQueryBuilder) queryBuilderClass
 				.getDeclaredConstructor().newInstance();
 
-		String fileQuery = app.getOptionQuery();
+		String fileQuery = app.getOption("file.query");
 
 		queryBuilder
 				.setReader(IOUtils.toBufferedReader(new FileReader(fileQuery)));
@@ -253,7 +251,7 @@ public class AppRewriting
 		if (times.get("generation") != null)
 			return;
 
-		String fileRules = app.getOptionRules();
+		String fileRules = app.getOption("file.rules");
 		{
 			new RuleManagerBuilder_textDemo(rules)
 					.addLines(Files.readAllLines(Paths.get(fileRules))).build();
