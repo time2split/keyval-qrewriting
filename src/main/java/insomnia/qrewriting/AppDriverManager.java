@@ -18,14 +18,13 @@ public class AppDriverManager extends DriverManager
 	}
 
 	private Driver loadDriver(String className, ClassLoader loader)
-			throws ClassNotFoundException, InstantiationException,
-			IllegalAccessException
+			throws Exception
 	{
 		@SuppressWarnings("unchecked")
 		final Class<Driver> driverClass = (Class<Driver>) loader
 				.loadClass(className);
 
-		return driverClass.newInstance();
+		return driverClass.getDeclaredConstructor().newInstance();
 	}
 
 	/**
