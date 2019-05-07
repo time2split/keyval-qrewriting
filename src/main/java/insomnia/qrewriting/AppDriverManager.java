@@ -4,6 +4,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Properties;
 
+import insomnia.qrewriting.context.Context;
 import insomnia.qrewriting.database.Driver;
 import insomnia.qrewriting.database.driver.DriverManager;
 
@@ -31,7 +32,7 @@ public class AppDriverManager extends DriverManager
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Driver getDriver(String driverName, Properties options)
+	public Driver getDriver(String driverName, Properties options, Context context)
 			throws ClassNotFoundException, Exception
 	{
 		Driver driver = drivers.get(driverName);
@@ -60,8 +61,7 @@ public class AppDriverManager extends DriverManager
 			driver = loadDriver(className, loader);
 		}
 		drivers.put(driverName, driver);
-		driver.setOptions(options);
-		driver.load();
+		driver.load(context, options);
 		return driver;
 	}
 
