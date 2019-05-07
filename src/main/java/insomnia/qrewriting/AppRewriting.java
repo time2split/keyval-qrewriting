@@ -18,6 +18,8 @@ import org.apache.commons.io.IOUtils;
 
 import insomnia.numeric.Interval;
 import insomnia.qrewriting.code.Encoding;
+import insomnia.qrewriting.context.AppContext;
+import insomnia.qrewriting.context.Context;
 import insomnia.qrewriting.database.Driver;
 import insomnia.qrewriting.database.driver.DriverQueryBuilder;
 import insomnia.qrewriting.database.driver.DriverQueryManager;
@@ -39,20 +41,23 @@ import insomnia.reader.ReaderException;
  * Classe accessible dans le template Velocity
  * 
  * @author zuri
- *
  */
 public class AppRewriting
 {
-	private HashMap<String, Duration>	times			= new HashMap<>();
-	private RuleManager					rules			= new RuleManager();
-	private Query						query			= null;
-	private Encoding					encoding		= new Encoding();
-	private ArrayList<Query>			queries;
+	private Context context = new AppContext();
 
-	private Properties					options;
-	private App							app;
-	private int							nbThreads		= 0;
-	private Driver						driver;
+	private HashMap<String, Duration> times    = new HashMap<>();
+	private RuleManager               rules    = new RuleManager();
+	private Query                     query    = null;
+	private Encoding                  encoding = new Encoding();
+	private Collection<Query>         queries;
+
+	private Properties options;
+	private App        app;
+	private int        nbThreads = 0;
+	private Driver     driver;
+
+	private boolean queriesAreMerged = false;
 
 	public AppRewriting(App app) throws ClassNotFoundException, Exception
 	{
@@ -61,17 +66,15 @@ public class AppRewriting
 		times.put("computation", null);
 
 		Properties comprop = app.coml.getOptionProperties("O");
-		Properties sysdef = new Properties();
-		sysdef.load(new InputStreamReader(
-			AppRewriting.class.getResourceAsStream("default.properties")));
+		Properties sysdef  = new Properties();
+		sysdef.load(new InputStreamReader(AppRewriting.class.getResourceAsStream("default.properties")));
 
 		Properties defaultOptions = new Properties();
-		defaultOptions.load(new InputStreamReader(
-			AppRewriting.class.getResourceAsStream("options.properties")));
+		defaultOptions.load(new InputStreamReader(AppRewriting.class.getResourceAsStream("options.properties")));
 
 		options = new Properties(defaultOptions);
 		options.putAll(comprop);
-		driver = app.driverManager.getDriver(app.getOption("driver"), options);
+		driver = app.driverManager.getDriver(app.getOption("driver"), options, context);
 	}
 
 	// ===============================================================
@@ -79,7 +82,6 @@ public class AppRewriting
 	// ===============================================================
 
 	/**
-	 * 
 	 * @param name
 	 * @return String|null null si option inexistante
 	 */
@@ -143,15 +145,15 @@ public class AppRewriting
 		makeQueries();
 
 		ArrayList<QueryBucket> ret = new ArrayList<>();
-		long i = encoding.generateCodeInterval().geta();
+		long                   i   = encoding.generateCodeInterval().geta();
 
 		QueryManager queryManager = driver.getAQueryManager();
 
-		for (Query q : queries)
-		{
-			ret.add(new QueryBucket(q, i, encoding.getCodeFrom((int) (i)),queryManager));
-			i++;
-		}
+			for (Query q : queries)
+			{
+				ret.add(new QueryBucket(q, i, encoding.getCodeFrom((int) (i)), queryManager));
+				i++;
+			}
 		return ret;
 	}
 
@@ -162,16 +164,13 @@ public class AppRewriting
 		if (query != null)
 			return;
 
-		Driver driver = app.driverManager.getDriver("@internal", options);
+		Driver driver = app.driverManager.getDriver("@internal", options, context);
 
-		Class<?> queryBuilderClass = driver.getQueryBuilderClass();
-		DriverQueryBuilder queryBuilder = (DriverQueryBuilder) queryBuilderClass
-				.getDeclaredConstructor().newInstance();
+		DriverQueryBuilder queryBuilder = driver.getAQueryBuilder();
 
 		String fileQuery = app.getOption("file.query");
 
-		queryBuilder
-				.setReader(IOUtils.toBufferedReader(new FileReader(fileQuery)));
+		queryBuilder.setReader(IOUtils.toBufferedReader(new FileReader(fileQuery)));
 		query = queryBuilder.newBuild();
 	}
 
@@ -185,13 +184,13 @@ public class AppRewriting
 		if (nbThreads == 1)
 		{
 			start = Instant.now();
-			QPU qpu = new QPUSimple(query, encoding);
+			QPU qpu = new QPUSimple(context, query, encoding);
 			queries = qpu.process();
 		}
 		else if (nbThreads > 1)
 		{
 			queries = new ArrayList<>();
-			QThreadManager threads = new QThreadManager(query, encoding);
+			QThreadManager threads = new QThreadManager(context, query, encoding);
 			threads.setMode_nbThread(nbThreads);
 			start = Instant.now();
 
@@ -200,9 +199,7 @@ public class AppRewriting
 				ArrayList<QThreadResult> res = threads.compute();
 
 				for (QThreadResult r : res)
-				{
 					queries.add(r.query);
-				}
 			}
 			catch (InterruptedException | ExecutionException e)
 			{
@@ -211,27 +208,25 @@ public class AppRewriting
 			}
 		}
 		else
-		{
-			throw new InvalidParameterException(
-				"Bad parameter sys.nbThreads=" + getOption("sys.nbThreads"));
-		}
+			throw new InvalidParameterException("Bad parameter sys.nbThreads=" + getOption("sys.nbThreads"));
+	}
 
 		String optVal = options.getProperty("queries.merge.sizeOfQuery");
 
 		if (optVal != null)
 			merge:
 			{
-				final int size = Integer.parseInt(optVal);
+		final int size = Integer.parseInt(optVal);
 
-				if (size == 1)
+		if (size == 1)
 					break merge;
-				if (size == 0)
+		if (size == 0)
 				{
 					queries.clear();
 					break merge;
 				}
-				DriverQueryManager manager = driver.getAQueryManager();
-				Query[] tmp = manager.mergeBySizeOfQueries(size, queries);
+		DriverQueryManager manager = driver.getAQueryManager();
+		Query[] tmp = manager.mergeBySizeOfQueries(size, queries);
 				queries = new ArrayList<>(Arrays.asList(tmp));
 			}
 		end = Instant.now();
@@ -253,13 +248,12 @@ public class AppRewriting
 
 		String fileRules = app.getOption("file.rules");
 		{
-			new RuleManagerBuilder_textDemo(rules)
-					.addLines(Files.readAllLines(Paths.get(fileRules))).build();
+			new RuleManagerBuilder_textDemo(context, rules).addLines(Files.readAllLines(Paths.get(fileRules))).build();
 		}
 		makeQuery();
-		Instant start = Instant.now();
+		Instant       start     = Instant.now();
 		CodeGenerator generator = new CodeGenerator_simple(query, rules);
-		Instant end = Instant.now();
+		Instant       end       = Instant.now();
 		times.put("generation", Duration.between(start, end));
 		encoding = generator.getEncoding();
 	}
