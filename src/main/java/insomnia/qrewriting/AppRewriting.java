@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
@@ -26,6 +27,8 @@ import insomnia.qrewriting.context.Context;
 import insomnia.qrewriting.database.Driver;
 import insomnia.qrewriting.database.DriverException;
 import insomnia.qrewriting.database.driver.DriverQueryBuilder;
+import insomnia.qrewriting.database.driver.DriverQueryEvaluator;
+import insomnia.qrewriting.database.driver.DriverQueryEvaluator.Cursor;
 import insomnia.qrewriting.database.driver.DriverQueryManager;
 import insomnia.qrewriting.generator.CodeGenerator;
 import insomnia.qrewriting.generator.CodeGeneratorException;
@@ -61,13 +64,19 @@ public class AppRewriting
 	private int        nbThreads = 0;
 	private Driver     driver;
 
+	private Cursor answer;
+
 	private boolean queriesAreMerged = false;
+
+	private List<Duration> threadEvaluationTimes;
 
 	public AppRewriting(App app) throws ClassNotFoundException, Exception
 	{
-		this.app = app;
+		threadEvaluationTimes = Collections.synchronizedList(new ArrayList<>());
+		this.app              = app;
 		times.put("generation", null);
 		times.put("computation", null);
+		times.put("evaluation", null);
 
 		Properties comprop = app.coml.getOptionProperties("O");
 		Properties sysdef  = new Properties();
@@ -127,6 +136,11 @@ public class AppRewriting
 		return encoding.getTotalNbStates();
 	}
 
+	public Cursor getAnswers()
+	{
+		return answer;
+	}
+
 	public void compute() throws Exception
 	{
 		makeQueries();
@@ -148,9 +162,9 @@ public class AppRewriting
 	{
 		makeQueries();
 
-		Collection<Query> queries = mergeQueries(this.queries);
-		ArrayList<QueryBucket> ret = new ArrayList<>();
-		long                   i   = encoding.generateCodeInterval().geta();
+		Collection<Query>      queries = mergeQueries(this.queries);
+		ArrayList<QueryBucket> ret     = new ArrayList<>();
+		long                   i       = encoding.generateCodeInterval().geta();
 
 		QueryManager queryManager = driver.getAQueryManager();
 
@@ -174,6 +188,46 @@ public class AppRewriting
 
 	// ===============================================================
 
+	private void evaluate_QThread(Collection<QThreadResult> results)
+	{
+		try
+		{
+			Collection<Query> queries = new ArrayList<>();
+
+			for (QThreadResult result : results)
+				queries.add(result.query);
+
+			evaluate(queries);
+		}
+		catch (DriverException e)
+		{
+			throw new RuntimeException(e);
+		}
+	}
+
+	private void evaluate(Collection<Query> queries) throws DriverException
+	{
+		Instant              start;
+		Instant              end;
+		DriverQueryEvaluator evaluator = driver.getAQueryEvaluator();
+		Query[]              aqueries  = queries.toArray(new Query[0]);
+
+		start  = Instant.now();
+		answer = evaluator.evaluate(aqueries);
+		end    = Instant.now();
+		threadEvaluationTimes.add(Duration.between(start, end));
+	}
+
+	private void computeEvaluationTime()
+	{
+		Duration ret = Duration.ZERO;
+
+		for (Duration d : threadEvaluationTimes)
+			ret = ret.plus(d);
+
+		times.put("evaluation", ret);
+	}
+
 	private void makeQuery() throws Exception
 	{
 		if (query != null)
@@ -191,8 +245,12 @@ public class AppRewriting
 
 	private void makeQueries() throws Exception
 	{
+		if (queries != null)
+			return;
+
 		makeContext();
 		nbThreads = Integer.parseInt(getOption("sys.nbThreads", "1"));
+		boolean doEvaluation = Integer.parseInt(getOption("sys.evaluation.block", "0")) > 0;
 		Instant start;
 		Instant end;
 
@@ -201,12 +259,19 @@ public class AppRewriting
 			start = Instant.now();
 			QPU qpu = new QPUSimple(context, query, encoding);
 			queries = qpu.process();
+
+			if (doEvaluation)
+				evaluate(queries);
 		}
 		else if (nbThreads > 1)
 		{
 			queries = new ArrayList<>();
 			QThreadManager threads = new QThreadManager(context, query, encoding);
 			threads.setMode_nbThread(nbThreads);
+
+			if (doEvaluation)
+				threads.setCallback(this::evaluate_QThread);
+
 			start = Instant.now();
 
 			try
@@ -227,6 +292,7 @@ public class AppRewriting
 
 		end = Instant.now();
 		times.put("computation", Duration.between(start, end));
+		computeEvaluationTime();
 	}
 
 	private Collection<Query> mergeQueries(Collection<Query> queries) throws DriverException
