@@ -26,6 +26,7 @@ import insomnia.qrewriting.context.AppContext;
 import insomnia.qrewriting.context.Context;
 import insomnia.qrewriting.database.Driver;
 import insomnia.qrewriting.database.DriverException;
+import insomnia.qrewriting.database.driver.CursorAggregation;
 import insomnia.qrewriting.database.driver.DriverQueryBuilder;
 import insomnia.qrewriting.database.driver.DriverQueryEvaluator;
 import insomnia.qrewriting.database.driver.DriverQueryEvaluator.Cursor;
@@ -41,7 +42,9 @@ import insomnia.qrewriting.query.QueryManager;
 import insomnia.qrewriting.query_building.RuleManagerBuilder_textDemo;
 import insomnia.qrewriting.rule.RuleManager;
 import insomnia.qrewriting.thread.QThreadManager;
+import insomnia.qrewriting.thread.QThreadQueriesManager;
 import insomnia.qrewriting.thread.QThreadResult;
+import insomnia.qrewriting.thread.QThreadRewritingManager;
 import insomnia.reader.ReaderException;
 
 /**
@@ -64,7 +67,7 @@ public class AppRewriting
 	private int        nbThreads = 0;
 	private Driver     driver;
 
-	private Cursor answer;
+	private CursorAggregation answer = new CursorAggregation();
 
 	private boolean queriesAreMerged = false;
 
@@ -212,9 +215,9 @@ public class AppRewriting
 		DriverQueryEvaluator evaluator = driver.getAQueryEvaluator();
 		Query[]              aqueries  = queries.toArray(new Query[0]);
 
-		start  = Instant.now();
-		answer = evaluator.evaluate(aqueries);
-		end    = Instant.now();
+		start = Instant.now();
+		answer.add(evaluator.evaluate(aqueries));
+		end = Instant.now();
 		threadEvaluationTimes.add(Duration.between(start, end));
 	}
 
