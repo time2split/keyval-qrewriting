@@ -268,12 +268,27 @@ public class AppRewriting
 		}
 		else if (nbThreads > 1)
 		{
+			String mode = getOption("sys.mode", "normal").toLowerCase();
 			queries = new ArrayList<>();
-			QThreadManager threads = new QThreadManager(context, query, encoding);
-			threads.setMode_nbThread(nbThreads);
+			QThreadManager threads;
+
+			switch (mode)
+			{
+			case "normal":
+				threads = new QThreadRewritingManager(context, query, encoding);
+				break;
+
+			case "naive":
+				threads = new QThreadQueriesManager(context, query, encoding);
+				break;
+
+			default:
+				throw new InvalidParameterException("Unknow option sys.mode=" + mode);
+			}
+			threads.setMode_nbThreads(nbThreads);
 
 			if (doEvaluation)
-				threads.setCallback(this::evaluate_QThread);
+				threads.setThreadCallback(this::evaluate_QThread);
 
 			start = Instant.now();
 
