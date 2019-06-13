@@ -36,7 +36,7 @@ class TheLabelFactory implements LabelFactory
 	}
 
 	@Override
-	public MyLabel from(String[] labels)
+	synchronized public MyLabel from(String[] labels)
 	{
 		Set<String> key = Set.of(labels);
 		checkAllocatedLabel:
