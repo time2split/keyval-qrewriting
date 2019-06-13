@@ -303,13 +303,14 @@ public class AppRewriting
 			return queries;
 
 		final int size = Integer.parseInt(optVal);
-		queriesAreMerged = true;
 
 		if (size == 1)
 			return queries;
 
-		if (size == 0)
+		if (size <= 0)
 			return Collections.emptyList();
+
+		queriesAreMerged = true;
 
 		DriverQueryManager manager = driver.getAQueryManager();
 
