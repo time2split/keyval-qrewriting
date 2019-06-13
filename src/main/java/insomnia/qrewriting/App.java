@@ -3,8 +3,9 @@ package insomnia.qrewriting;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
-import java.io.StringWriter;
+import java.io.Writer;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -174,11 +175,16 @@ public class App
 	protected void velocityExecute()
 	{
 		Template template = Velocity.getTemplate(fileTemplate);
-		StringWriter sw = new StringWriter();
-
-		template.merge(vcontext, sw);
-
-		System.out.println(sw);
+		Writer writer = new OutputStreamWriter(System.out);
+		template.merge(vcontext, writer);
+		try
+		{
+			writer.flush();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
 	}
 
 	protected void printHelp()
