@@ -18,15 +18,17 @@ import insomnia.qrewriting.query.LabelFactory;
 
 class TheLabelFactory implements LabelFactory
 {
-	private Map<Set<String>, WeakReference<MyLabel>> allocatedLabels = new HashMap<>(1024);
-	private ReferenceQueue<MyLabel>                  referenceQueue  = new ReferenceQueue<>();
+	private Map<Set<String>, WeakReference<MyLabel>> allocatedLabels;
+	private ReferenceQueue<MyLabel>                  referenceQueue;
 
 	private static final int initialStep = 1000;
-	private int              cleanStep   = initialStep;
+	private int              cleanStep;
 
 	public TheLabelFactory()
 	{
-
+		cleanStep       = initialStep;
+		allocatedLabels = new HashMap<>(1024);
+		referenceQueue  = new ReferenceQueue<>();
 	}
 
 	@Override
