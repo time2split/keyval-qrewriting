@@ -23,7 +23,9 @@ $endqueries##
 $r.compute()
 #end
 Number of codes  : $r.nbCodes
+Number of lines  : $r.answers.size()
 Interval         : $r.interval
 Threads          : $r.nbThreads
 Generation time  : $r.times.generation
 Computation time : $r.times.computation
+Evaluation time  : $r.times.evaluation
