@@ -36,28 +36,24 @@ import insomnia.resource.ResourceUtils;
 
 public class App
 {
-	protected final Properties	properties;
+	protected final Properties properties;
 
-	private String				fileTemplate;
+	private String fileTemplate;
 
-	protected Options			options;
-	protected CommandLine		coml;
-	protected VelocityContext	vcontext;
-	protected AppDriverManager	driverManager;
+	protected Options          options;
+	protected CommandLine      coml;
+	protected VelocityContext  vcontext;
+	protected AppDriverManager driverManager;
 
 	public App() throws Exception
 	{
 		properties = new Properties();
-		properties.load(IOUtils.buffer(new InputStreamReader(
-			App.class.getResourceAsStream("default.properties"))));
-
+		properties.load(IOUtils.buffer(new InputStreamReader(App.class.getResourceAsStream("default.properties"))));
 	}
 
 	public String getDefault(String name)
 	{
-		assert properties.containsKey(
-			name) : "The default property file must have the property '" + name
-					+ "'";
+		assert properties.containsKey(name) : "The default property file must have the property '" + name + "'";
 		return properties.getProperty(name);
 
 	}
@@ -69,46 +65,41 @@ public class App
 
 	private ArrayList<URL> getDriversLocations() throws Exception
 	{
-		ArrayList<URL> ret = new ArrayList<>();
-		String[] paths = getOption("drivers.paths").split(":");
-		FileSystem fs = FileSystems.getDefault();
-		PathMatcher matcher = fs.getPathMatcher("glob:*.{jar,zip}");
+		ArrayList<URL> ret     = new ArrayList<>();
+		String[]       paths   = getOption("drivers.paths").split(":");
+		FileSystem     fs      = FileSystems.getDefault();
+		PathMatcher    matcher = fs.getPathMatcher("glob:*.{jar,zip}");
 
 		for (String path : paths)
 		{
 			Path cpath = Paths.get(path);
 			cpath.normalize();
 
-			if (Files.exists(cpath))
+			if (!Files.exists(cpath))
+				continue;
+
+			if (Files.isDirectory(cpath))
 			{
-				if (Files.isDirectory(cpath))
-				{
-					List<URL> tmp = Files.list(cpath).filter(p -> matcher.matches(p.getFileName()))
-							.map(p ->
-							{
-								try
-								{
-									return p.toUri().toURL();
-								}
-								catch (MalformedURLException e)
-								{
-									e.printStackTrace();
-								}
-								return null;
-							}).collect(Collectors.toList());
-					ret.addAll(tmp);
-				}
-				else
-				{
-					ret.add(cpath.toUri().toURL());
-				}
+				List<URL> tmp = Files.list(cpath).filter(p -> matcher.matches(p.getFileName())).map(p -> {
+					try
+					{
+						return p.toUri().toURL();
+					}
+					catch (MalformedURLException e)
+					{
+						e.printStackTrace();
+					}
+					return null;
+				}).collect(Collectors.toList());
+				ret.addAll(tmp);
 			}
+			else
+				ret.add(cpath.toUri().toURL());
 		}
 		return ret;
 	}
 
 	/**
-	 * 
 	 * Récupère les noms des fichiers internes de template
 	 * 
 	 * @return
@@ -117,8 +108,7 @@ public class App
 	{
 		try
 		{
-			return ResourceUtils.getResourcesOf(App.class,
-				getDefault("sys.path.templates"));
+			return ResourceUtils.getResourcesOf(App.class, getDefault("sys.path.templates"));
 		}
 		catch (URISyntaxException | IOException e)
 		{
@@ -130,43 +120,37 @@ public class App
 
 	protected Options makeOptions()
 	{
-		final Options ret = new Options();
-		final OptionGroup template = new OptionGroup();
-		String templates = "";
+		final Options     ret       = new Options();
+		final OptionGroup template  = new OptionGroup();
+		String            templates = "";
 
 		// Liste des templates disponibles
 		for (String s : getTemplateFiles())
 		{
 			templates += "@" + s + "\n";
 		}
-		template.addOption(Option.builder("t").longOpt("template")
-				.desc("Template of the output \n" + templates + "\n").hasArg()
-				.build());
-		ret.addOption(Option.builder("q").longOpt("file.query")
-				.desc("Query file").hasArg().build());
-		ret.addOption(Option.builder("r").longOpt("file.rules")
-				.desc("Rules file").hasArg().build());
-		ret.addOption(Option.builder("d").longOpt("driver")
-				.desc("Database driver").hasArg().build());
-		ret.addOption(Option.builder("D").longOpt("drivers.paths")
-				.desc("Database driver").hasArg().build());
+		template.addOption(Option.builder("t").longOpt("template").desc("Template of the output \n" + templates + "\n").hasArg().build());
+		ret.addOption(Option.builder("q").longOpt("file.query").desc("Query file").hasArg().build());
+		ret.addOption(Option.builder("r").longOpt("file.rules").desc("Rules file").hasArg().build());
+		ret.addOption(Option.builder("d").longOpt("driver").desc("Database driver").hasArg().build());
+		ret.addOption(Option.builder("D").longOpt("drivers.paths").desc("Database driver").hasArg().build());
 		ret.addOption(Option.builder("h").longOpt("help").desc("Help").build());
-		ret.addOption(Option.builder().longOpt("display-template")
-				.desc("Display the template and exit").build());
-		ret.addOption(Option.builder("O").hasArgs().valueSeparator()
-				.desc("Set an option of the program").build());
+		ret.addOption(Option.builder().longOpt("display-template").desc("Display the template and exit").build());
+		ret.addOption(Option.builder("O").hasArgs().valueSeparator().desc("Set an option of the program").build());
 		ret.addOptionGroup(template);
 		return ret;
 	}
 
-	protected void createVelocityContext()
-			throws ClassNotFoundException, Exception
+	protected void createVelocityContext() throws ClassNotFoundException, Exception
 	{
 		vcontext = new VelocityContext();
 		AppRewriting apprewriting = new AppRewriting(this);
 		vcontext.put("r", apprewriting);
 	}
 
+	/**
+	 * Template method called before the velocity execution.
+	 */
 	protected void program()
 	{
 
@@ -190,10 +174,7 @@ public class App
 	protected void printHelp()
 	{
 		HelpFormatter format = new HelpFormatter();
-		format.printHelp(
-			"Query rewriting " + properties.getProperty("version") + "\n\n",
-			"Use query rewriting with norl(1) rules\n", options,
-			"\nContact : webzuri@gmail.com\n");
+		format.printHelp("Query rewriting " + properties.getProperty("sys.version") + "\n\n", "Use query rewriting with norl(1) rules\n", options, "\nContact : webzuri@gmail.com\n");
 	}
 
 	protected void execute(String[] args) throws Exception
@@ -209,9 +190,7 @@ public class App
 			}
 			catch (IOException e)
 			{
-				System.err
-						.println("impossible de charger velocity.properties : "
-								+ e.getMessage());
+				System.err.println("impossible de charger velocity.properties : " + e.getMessage());
 			}
 			Velocity.init(prop);
 		}
@@ -237,7 +216,7 @@ public class App
 				if (!name.endsWith(".vm"))
 					name += ".vm";
 
-				fileTemplate = getDefault("sys.path.templates") + name;
+				fileTemplate     = getDefault("sys.path.templates") + name;
 				internalTemplate = true;
 			}
 
@@ -247,14 +226,13 @@ public class App
 
 				if (internalTemplate)
 				{
-					Reader reader = new BufferedReader(new InputStreamReader(
-						App.class.getResourceAsStream(fileTemplate)));
+					Reader reader = new BufferedReader(new InputStreamReader(App.class.getResourceAsStream(fileTemplate)));
 					template = IOUtils.toString(reader);
 					reader.close();
 				}
 				else
 				{
-					Path path = Paths.get(fileTemplate);
+					Path   path   = Paths.get(fileTemplate);
 					Reader reader = Files.newBufferedReader(path);
 					template = IOUtils.toString(reader);
 					reader.close();
@@ -262,8 +240,7 @@ public class App
 				System.out.println(template);
 				return;
 			}
-			driverManager = new AppDriverManager(
-				getDriversLocations().toArray(new URL[0]));
+			driverManager = new AppDriverManager(getDriversLocations().toArray(new URL[0]));
 			createVelocityContext();
 			program();
 			velocityExecute();
@@ -280,8 +257,7 @@ public class App
 		}
 		catch (MethodInvocationException e)
 		{
-			System.err.println(e.getLocalizedMessage());
-			e.getCause().printStackTrace();
+			e.printStackTrace();
 		}
 	}
 }
